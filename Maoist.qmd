@@ -1,0 +1,644 @@
+---
+title: Maoist Return or Continuation of Reform? A Structural Topic Modelling Analysis of Chinese Government Reports and Party Communiques.
+#header-includes: |
+#  \AtBeginDocument{\title[Bail out the money printer?]{Bail out the money printer? The impact of fiscal backing on central bank risk taking.}}
+date: 2024-08-02
+date-format: |
+    | DD MMMM YYYY
+# | [Word Count]: `r wordcountaddin:::word_count('Maoist.qmd')`
+authors:
+  - name: Dianyi Yang
+    email: kv9898@rubuky.com
+    orcid: 0009-0004-4652-3429
+    affiliations:
+      - ref: lse
+    correspondence: true
+affiliations:
+  - id: lse
+    name: London School of Economics and Political Science
+thanks: Replication files for this project are available at
+execute:
+  echo: false
+  warning: false
+  error: false
+format:
+  #native: default
+  #docx: default
+  orcid-pdf:
+    keep-tex: true
+    number-sections: true
+    include-in-header:
+      - text: |
+         \usepackage{ctex}
+link-citations: true
+#csl: extra/apa.csl
+bibliography: references.bib
+abstract: |
+  Motivated by the wide-spread speculation of a Maoist return under Xi Jinping, this project applies Structural Topic Modelling to the reports on the work of the government and communiques of the plenary sessions of the central committee of the CPC to identify the underlying themes and compare them vertically across different eras of Chinese leadership, and horizontally between the party and government. This project finds no evidence of a realignment with the Mao era in the party communiques or government reports under Xi Jinping. Instead, the reports under Xi Jinping are found to be more similar to those under his immediate predecessors. However, this project documents a divergence in the style of the party communiques and government reports under Xi Jinping, with the former becoming more abstract and ideological, and the latter becoming more concrete and policy-oriented. One source of this divergence is the downplaying of the five-year plans in the party communiques and government reports, which used to be the one of the overlapping themes of both documents.
+---
+
+```{r setup}
+#knitr::opts_knit$set(root.dir = 'D:/OneDrive - London School of Economics/Desktop/MY459/final')
+need <- c('tidyverse','quanteda',"stm","quanteda.textstats", 
+          "philentropy", "quanteda.textmodels",
+          "stringr","quanteda.textstats","kableExtra") # list packages needed
+have <- need %in% rownames(installed.packages()) # checks packages you have
+if(any(!have)) install.packages(need[!have]) # install missing packages
+invisible(lapply(need, library, character.only=T))
+```
+
+\newpage
+
+# Introduction
+
+<!-- [^1]: All code used in this assignment is provided in [Appendix @sec-code]. -->
+
+As the largest existing Marxist-Leninist state, China's politics is often described as a "black box" for its opaqueness [@chen2023]. As a result, researchers rely on official documents to understand the Chinese government's policy priorities and ideological shifts. Among them, the reports on the work of the government and communiques of the plenary sessions of the central committee of the Communist Party of China (CPC) are of great importance. The former are delivered by the Premier of the State Council at the annual meeting of Chinas legislature - the National People's Congress (NPC) and outline the government's achievements and goals for the coming year. The latter are issued after the plenary sessions of the central committee of the Party and summarise the decisions made during the meeting, which often set the tone for not only the government's policy agenda, but also every other aspect of Chinese society.
+
+Nevertheless, @jiang2021 points out that much of the existing literature merely translates theses government reports and rarely applies quantitative text analysis techniques to them. This project attempts to fill this gap by applying structural topic modelling to these reports to identify the underlying themes and compare them vertically across different eras of Chinese leadership, and horizontally between the party and government. Specifically, this project compares the reports under Xi Jinping's leadership with those under his predecessors to identify any significant differences in policy priorities and ideological emphasis on lexical and semantic grounds. Such differences between different stages of Xi's leadership are also documented.
+
+This project finds no evidence of a realignment with the Mao era in the party communiques or government reports under Xi Jinping. Instead, the reports under Xi Jinping are more similar to those under his immediate predecessors. However, this project documents a divergence in the style of the party communiques and government reports under Xi Jinping, with the former becoming more abstract and ideological, and the latter becoming more concrete and policy-focused. One important factor in this divergence is the downplaying of the five-year plans in party communiques and government reports under Xi Jinping, which had been an important overlap between previous party communiques and government reports.
+
+# Motivation
+
+The current Chinese leader, Xi Jinping, is often compared to Chairman Mao Zedong for his power centralisation, ambitions, and authority [@Economist2023]. Despite scholarly opposition to this claim [@Matson2022; @Milanovic2023; @Economist2023], there is yet empirical evidence for or against it. Moreover, Xi Jinping is said to have put an end to the export-driven and market-led "Reform and Opening-up" era in favour of a "New Era" of a more internal and state-focused model of economic development [@Hsu2023]. Nevertheless, Xi himself stressed the importance of deepening reform and expanding *high-standard* opening-up recently [@CPPCC2023]. Gaining empirical and quantitative evidence comparing Xi and his predecessors is crucial for understanding the current Chinese political landscape and forecasting its future.
+
+This project focuses on two aspects in which the attitudes of and toward leaders have profound implications - the State Council (central people's government) and plenary sessions of the central committee of the Chinese Communist Party. This combination of the two aspects is intriguing as the State Council historically enjoyed a significant degree of autonomy from the party, albeit much less recently [@Horsley2023]. This could be reflected in the government reports, which may not have necessarily echoed the prevailing ideological trends in the party.
+
+This project compares government and party reports under Xi Jinping's leadership with those under his predecessors to identify any significant differences in policy priorities and ideological emphasis on lexical and semantic grounds. Specifically, such differences between different stages of Xi's leadership are also documented.
+
+Unlike previous attempts to quantitatively analyse these government reports [@jiang2021], this project goes beyond term frequency analysis and applies topic modelling to identify the underlying *themes* in these reports. Moreover, @jiang2021 only analyses government reports from 2001 to 2020, this project expands the time span of the corpus to include those from 1954 to 2024. This allows for comparison across the Maoist (1954-1978), Reform (1979-2012) and the Xi (2013-2024) eras. Furthermore, this project also includes party reports to compare the government's policy priorities with those of the party, which could potentially be more insightful.
+
+# Corpus
+
+## Reports on the Work of the Government
+
+The first part of the corpus consists of the reports on the work of the government delivered by the Premier of the State Council at the annual meeting of the National People's Congress (NPC) from 1954 to 2024, with discontinuities between 1961-1963, 1965-1974 and 1976-1977 due to political turmoil ($N=56$).
+
+The reports from 1954 to 2017 are sourced from a dropbox [link](https://www.dropbox.com/s/37ojd5knz1qeyul/data_corpus_chinesegovreport.rds?dl=1) in a Chinese text analysis example by Haiyan @Wang for Quanteda. The reports from 2018 to 2024 are manually collected from the Chinese government's official website. [Here](https://www.gov.cn/yaowen/liebiao/202403/content_6939153.htm) is an example link to the 2024 report.
+
+## Communiques of the Plenary Sessions of the Central Committee of the Communist Party of China
+
+The second part of the corpus consists of the communiques of the plenary sessions of the central committee of the Communist Party of China from 1958 to 2023, with discontinuities in/between 1960, 1963-1965, 1967, 1969, 1961-1976, 1981-1987, 1999 due to no communiques produced, no plenary sessions held or communiques only containing personnel changes and no political information ($N=46$).
+
+All the communiques are sourced from the *Database of all national congresses of the Communist Party of China*, except for the 2023 communique. [Here](http://politics.people.com.cn/n1/2022/1013/c1024-32544084.html) is an example link to the 2022 communique. The 2023 communique is sourced from the [government website](https://www.gov.cn/xinwen/2023-02/28/content_5743717.htm).
+
+## Summary Statistics
+
+```{r data_prep}
+#| eval: false
+corp <- readRDS("data/chinesegovreport_orig.rds")# Load data
+new_corp <- readtext::readtext(paste0("data/",2018:2024,".txt"))
+new_corp$Year <- gsub(".txt","",new_corp$doc_id) |> as.integer()
+new_corp$Premier <- ifelse(new_corp$Year<2024,"李克强","李强")
+new_corp <- new_corp |>
+  mutate(doc_id = paste0(Year,"政府工作报告_",Premier,".txt")) 
+new_corp <- corpus(new_corp$text, 
+                   docnames = paste0("text",50:56),
+                   docvars = new_corp |> as.data.frame() |> select(c("doc_id","Year","Premier")))
+corp <- append(corp,new_corp)
+saveRDS(corp,"data/chinesegovreport.rds")
+```
+
+```{r party_data_prep}
+#| eval: false
+party_corp <- readtext::readtext(paste0("party/"))
+party_corp$Year <- gsub(".txt","",party_corp$doc_id) |> as.integer()
+party_corp$doc_id <- paste0(party_corp$Year,"_party")
+party_corp <- party_corp |> mutate(
+  Premier = case_when(
+    Year<=1976 ~ "毛泽东",
+    Year<1978 ~ "华国锋",
+    Year<=1989 ~ "邓小平",
+    Year<=2002 ~ "江泽民",
+    Year<=2012 ~ "胡锦涛",
+    .default = "习近平"
+  )
+)
+party_corp <- party_corp |> corpus()
+saveRDS(party_corp, "party/corp.rds")
+
+# merge both
+docnames(corp) <- paste0(docvars(corp)$Year,"_gov")
+docvars(corp)$type = "gov"
+docvars(party_corp)$type = "party"
+corp_all <- append(corp, party_corp)
+saveRDS(corp_all, "data/corp_all.rds")
+```
+
+```{r summary_prer}
+#| eval: false
+corp_all <- readRDS("data/corp_all.rds")
+sum <- textstat_summary(corp_all)
+
+sum <- sum |> select(chars,sents, tokens, types)
+sum <- sum |> mutate(Year = docvars(corp_all)$Year)
+sum <- sum |> mutate(`Leader/Premier` = docvars(corp_all)$Premier)
+sum <- sum |> mutate(`Report by` = docvars(corp_all)$type)
+
+# translate premier names to pinyin
+mysj <- pinyin::pydic(method="toneless", dic="pinyin2")
+mysj$薄 <- "bo" # 薄 pronounces as "bo" not "bao" as a surname
+sum <- sum |> mutate(`Leader/Premier_py` = paste(
+  substr(`Leader/Premier`,1,1) |> pinyin::py(dic=mysj, sep=""), 
+  substring(`Leader/Premier`,2) |> pinyin::py(dic=mysj, sep="")
+) |> str_to_title ())
+
+sum <- sum |> mutate(
+  `Leader/Premier` = paste0(`Leader/Premier`," (",`Leader/Premier_py`,")")
+)
+
+# reorder columns
+sum <- sum |> select(Year, `Leader/Premier`, `Report by`,chars, sents, tokens, types)
+
+sum_old <- sum[1:12,]
+sum_new <- sum[13:nrow(sum),]
+sum_new_summary <- sum_new |> group_by(`Leader/Premier`) |> summarise(
+  Year = paste0(min(Year),'-',max(Year)),
+  `Leader/Premier` = unique(`Leader/Premier`),
+  `Report by` = unique(`Report by`),
+  chars = sum(chars),
+  sents = sum(sents),
+  tokens = sum(tokens),
+) 
+sum_new_summary <- sum_new_summary |> arrange(match(sum_new_summary$`Leader/Premier`,(sum_new$`Leader/Premier` |> unique())))
+
+#create dfm for counting types
+dfm_temp <- corp_all |> tokens() |> dfm()
+total_types <- dfm_temp |> nfeat()
+dfm_late <- dfm_temp[13:nrow(dfm_temp),]
+dfm_late <- dfm_late |> dfm_group(groups = Premier)
+ntype_late <- ntype(dfm_late)
+right_order <- dfm_temp[13:nrow(dfm_temp),] |> 
+                                 docvars() |> select(Premier) |> unique()
+ntype_late <- ntype_late[match(right_order$Premier,names(ntype_late))]
+sum_new_summary$types <- ntype_late # add types to summary
+
+# merge into new summary data frame
+sum_shortened <- rbind(sum_old, sum_new_summary)
+sum_shortened <- sum_shortened |>
+  add_row(Year = "1954-2024", `Leader/Premier` = "Total", `Report by` = "Total", 
+          chars = sum(sum_shortened$chars), sents = sum(sum_shortened$sents), 
+          tokens = sum(sum_shortened$tokens), types = total_types)
+
+save(sum, sum_shortened, file="output/summary.Rdata")
+```
+
+```{r summary}
+#| label: tbl-summary
+#| tbl-cap: Summary of the corpus
+#| tbl-pos: H
+load("output/summary.Rdata")
+sum_shortened |> kbl(
+  col.names = c("Year","Leader/Premier", "Report by", "Characters","Sentences","Tokens","Types"), 
+  centering = T) |> 
+  kable_styling()
+```
+
+@tbl-summary provides summary statistics of the corpus. The corpus contains 102 reports from 1954 to 2024, with a total of `r sum_shortened[25,4] |> format(big.mark = ",")` characters, `r sum_shortened[25,5] |> format(big.mark = ",")` sentences, `r sum_shortened[25,6] |> format(big.mark = ",")` tokens, and `r sum_shortened[25,7] |> format(big.mark = ",")` types. The reports have been delivered by `r length(unique(sum_shortened[,2]))-1` leaders or premiers in total.
+
+In terms of preprocessing, I removed punctuations, numbers (in Arabic numerals), symbols, urls, and stopwords in Chinese. I also padded the tokens with spaces to avoid the concatenation of words. I used the `textstat_collocations()` function to find collocations in the corpus. I selected some political collocations from the list and manually added some collocations as compound tokens for better analysis. @tbl-collocations shows the selected collocations, their t-statistic results and their English translations. @tbl-manual-collo shows the manually added compound tokens, their English translations and the reasons for inclusion.
+
+```{r preprocess}
+#| eval: false
+toks <- corp_all %>% 
+  tokens(remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE,
+         remove_url = TRUE, padding = TRUE) |>
+  tokens_remove(stopwords("zh", source="misc"), padding = TRUE)
+
+tstat_col <- toks %>%  #find collocations
+  textstat_collocations()  
+tstat_col <- tstat_col |> head(100) #inspect the top 100 collocations
+tstat_select <- tstat_col[c(1,3,5,7,9,11,12,17,21,22,38,44,53,92),] #select some collocations for compound tokens
+tstat_select$English <- c("Socialism","Modernisation","Five-year plan","Regulation and control","Opening-up","Infrastructure","Reform and opening-up","Spiritual civilisation","Bourgeoisie","Party Central Committee","Capitalism","Cooperative","Communist Party","Working Class")
+tstat_select <- tstat_select |> relocate(English, .after=collocation)
+
+phrases <- c(
+  as.phrase(tokens("习近平")),as.phrase(tokens("江泽民")),
+  as.phrase(tokens("中国特色社会主义")), as.phrase(tokens("伟大复兴")),
+  as.phrase(tokens("深化改革")),
+  as.phrase(tokens("共同富裕")),as.phrase(tokens("中国式现代化")),
+  as.phrase(tokens("中国梦")),as.phrase(tokens("新质生产力")),
+  as.phrase(tokens("科学发展观")),as.phrase(tokens("三个代表")),as.phrase(tokens("百家争鸣"))
+) # dictionary of extra compound tokens
+
+save(tstat_select, phrases, file="output/collocations.Rdata")
+```
+
+```{r collocations}
+#| label: tbl-collocations
+#| tbl-cap: Summary of the selected collocations
+load("output/collocations.Rdata")
+tstat_select |> kbl(centering = T, row.names=F) |> 
+  kable_styling()
+```
+
+| Collocation      | English                                | Reason                             |
+|------------------------|------------------------|------------------------|
+| 习近平           | Xi Jinping                             | Name of leader                     |
+| 江泽民           | Jiang Zemin                            | Name of leader                     |
+| 中国特色社会主义 | Socialism with Chinese Characteristics | Political concept                  |
+| 伟大复兴         | Great Rejuvenation                     | Political slogan under Xi          |
+| 深化改革         | Deepen reform                          | Differs from reform and opening-up |
+| 共同富裕         | Common prosperity                      | Political slogan under Xi          |
+| 中国式现代化     | Chinese style modernization            | Political slogan under Xi          |
+| 中国梦           | Chinese dream                          | Political slogan under Xi          |
+| 新质生产力       | New productivity                       | Political slogan under Xi          |
+| 科学发展观       | Scientific outlook on development      | Political slogan under Hu          |
+| 三个代表         | Three representatives                  | Political slogan under Jiang       |
+| 百家争鸣         | A hundred schools of thought contend   | Political slogan under Mao         |
+
+: Manually added collocations for compound tokens {#tbl-manual-collo}
+
+```{r tryout}
+#| eval: false
+dfm <- toks %>% 
+  tokens_compound(phrases, concatenator = "") |>
+  tokens_compound(tstat_select, concatenator = "") |>
+  tokens_ngrams(n = 1:3) |>
+  dfm()
+
+
+
+stm_input <- convert(dfm, to = "stm")
+
+k_search_output <- searchK(stm_input$documents, stm_input$vocab,
+                           K = c(5, 10, 15, 20, 25, 30), data = stm_input$meta,
+                           verbose = FALSE, heldout.seed = 123)
+plot(k_search_output)
+k_search_output
+save(k_search_output, file = "output/k_search_output.rdata")
+
+stmodel <- stm(documents = stm_input$documents, vocab = stm_input$vocab,
+                     K = 15, seed=123,
+                    prevalence =~ Premier,
+               data = stm_input$meta, verbose = FALSE, init.type = "Spectral")
+
+plot(stmodel)
+```
+
+# Methods
+
+## Structural Topic Model
+
+The structural topic model was introduced by @roberts2014 to include prevalance and content covariates into the traditional correlated topic model by @blei2007. Unlike the earlier Latent Dirichlet Allocation (LDA) by @blei2003, structural and correlated topic models allow for correlations between topics, which is more realistic and leads to better fit. Nevertheless, they retain the ability to allow multiple topics in a document and same words in multiple topics, similar to the LDA.
+
+I first searched for the optimal number of topics ($K$) using a quantitative-metric-assisted approach combined with human judgement. @fig-k-search presents the quantitative metrics of the $K$-search by the `stm` package. It can be seen that $K=25$ has relatively high held-out likelihood and close-to-zero residuals without much compromise on semantic coherence. $K=25$ also produces the most sensible and exclusive topics by human judgement.
+
+```{r k_search}
+#| eval: false
+dfm_all <- corp_all %>% 
+  tokens(remove_punct = TRUE, remove_numbers = TRUE, remove_symbols = TRUE,
+         remove_url = TRUE, padding = TRUE) |>
+  tokens_remove(stopwords("zh", source="misc"), padding = TRUE) %>% 
+  tokens_compound(phrases, concatenator = "") |>
+  tokens_compound(tstat_select, concatenator = "") |>
+  tokens_ngrams(n = 1:3) |>
+  dfm()
+
+stm_input_all <- convert(dfm_all, to = "stm")
+
+k_search_output_all <- searchK(stm_input_all$documents, stm_input_all$vocab,
+                           K = c(5, 10, 15, 20, 25, 30, 40, 50), data = stm_input_all$meta,
+                           verbose = FALSE, heldout.seed = 123)
+save(k_search_output_all, file="output/k_search.Rdata")
+```
+
+```{r k-search-plot}
+#| label: fig-k-search
+#| fig-cap: Result of the quantitative metric K-search
+#| fig-height: 4.5
+#| fig-width: 8
+load("output/k_search.Rdata")
+plot(k_search_output_all)
+```
+
+## Correspondence Analysis
+
+As a robustness check, I use the Correspondence Analysis (CA) by @c2007 as a non-parametric alternative to compare the trends in Chinese government reports and party communiques over the past decades. The Correspondence Analysis performs singular value decomposition on the normalised document-feature matrix to project the matrix into lower dimensions. In this project, I reduce the matrix to 2 dimensions for the best visualisation.
+
+There are three reasons for using the Correspondence Analysis rather than the wordfish by @slapin2008. Firstly, the Correspondence Analysis allows us to keep more than one dimension, unlike the wordfish. Secondly, the Correspondence Analysis is much faster to run and can cope with larger matrices. Thirdly, the first component of Correspondence Analysis is usually similar to the wordfish results.
+
+# Results
+
+## Structural Topic Model - Topic Prevalence Effects
+
+I ran a structural topic model with $K=25$ topics on the Chinese government reports and party communiques with Leader/Premier names and Government/Party report as prevalence covariates. The reason for not including any content covariates is that this project focuses on what topics are mentioned more by each leader/premier rather than which words they use for each topic. Moreover, adding content covariates dramatically increases the time of running the model. The topic names and their Chinese keywords by FREX are presented in @fig-stm-plot in the order of their prevalence in all documents. The FREX score is higher when the words are both frequent and exclusive to the topic. It is the harmonic mean of the rank by probability within topic (frequency) and rank by distribution of topic given the word (exclusivity). An English version of the keywords with topic numbers is presented in @fig-stm-plot-english.
+
+```{r stm}
+#| eval: false
+stmodel_25 <- stm(documents = stm_input_all$documents, 
+                  vocab = stm_input_all$vocab,
+                  K = 25, seed=123,
+                  prevalence =~ Premier + type,
+                  data = stm_input_all$meta, 
+                  verbose = FALSE, init.type = "Spectral")
+save(stmodel_25, file="output/stmodel_25.Rdata")
+```
+
+```{r stm-plot}
+#| fig-cap: Topics in Chinese government reports and party communiques and related words by FREX
+#| fig-width: 12
+#| fig-height: 8
+#| fig-pos: h
+#| label: fig-stm-plot
+load("output/stmodel_25.Rdata")
+plot(stmodel_25, labeltype="frex", family="GB1",
+     topic.names=c("Economic governance","Budget",
+                   "Gang of Four","Rural Development",
+                   "Agriculture/Commune",
+                   "Party leadership",
+                   "Export-oriented",
+                   "Socialist struggle",
+                   "Production",
+                   "Advantage in governance",
+                   "Technological advancement",
+                   "Emission reduction",
+                   "New era/institutional reform",
+                   "Economic stability/anti-poverty",
+                   "Production transformation",
+                   "Shift in economic development",
+                   "Criticism of Lin Biao and Confucius",
+                   "Political rehabilitation",
+                   "Socialist production",
+                   "Pollution/Belt and road",
+                   "State Capitalism",
+                   "Harmony",
+                   "Socialist market economy",
+                   "Third world",
+                   "Cost of living"))
+```
+
+```{r stm_plot_english}
+#| fig-cap: Topics in Chinese government reports and party communiques and related words by FREX (in English)
+#| fig-width: 14
+#| fig-height: 8
+#| fig-pos: h
+#| label: fig-stm-plot-english
+plot(stmodel_25, custom.labels=c(
+  "Seventh Five-Year Plan, Sixth Five-Year Plan, Economic governance",
+  "budget figures, national final accounts, final accounts",
+  "Gang of Four, seizing power, Jiang Qing",
+  "11th Five-Year Plan, Growth Mode, Financial Arrangements",
+  "outline requirements, agricultural development outline, canteen",
+  "Inner-party politics, intra-party political life, regulating the party",
+  "reform plan, nuclear weapons, commodity economy",
+  "Oppose the U.S. Empire, Premier Zhou pointed out, Prime Minister pointed out",
+  "Compared with the previous year, increased compared with the previous year, construction completed",
+  "Significant advantages, national governance, governance system",
+  "State-owned enterprises, high-tech, social and economic development",
+  "Migrant workers, energy saving and reduction, energy reduction",
+  "State institutions, first meeting, reform of state institutions",
+  "Stabilizing employment, fighting the pandemic, poverty-stricken areas",
+  "goods industry, consumer goods industry, process technology",
+  "Transform economic development, accelerate the transformation of the economy, and the mode of economic development",
+  "Criticise, war preparation, criticise Lin Biao",
+  "Comrades Biao, Lin Biao and Comerade Liu Shaoqi",
+  "applause, enthusiastic_applause, Tibet",
+  "haze, fog, fog_haze",
+  "1949, state capitalism, equal to_1949",
+  "Work style construction, 17th central committee, governance",
+  "The Eighth Five-Year Plan, market economic system, is_beneficial",
+  "The third world country, 1982, 1988",
+  "focus_arrangement, living_expense, expense_price"
+))
+```
+
+```{r effect_estimates}
+#| eval: false
+meta_english <- stm_input_all$meta
+
+meta_english <- meta_english |> mutate(`Premier` = paste(
+  substr(`Premier`,1,1) |> pinyin::py(dic=mysj, sep=""), 
+  substring(`Premier`,2) |> pinyin::py(dic=mysj, sep="")
+) |> str_to_title ())
+
+effect_estimates <- estimateEffect(1:25 ~ Premier+type, stmodel_25, 
+                                   meta = meta_english)
+save(effect_estimates, file="output/effect_estimates.Rdata")
+```
+
+The results show that almost all topics correspond to a specific time period or even a specific leader/premier. However, there tended to be overlaps between party communiques and government reports when five-year plans or broad economic planning were of concern. For example, Topic 1, "Economic governance," is closely related to the 6th and 7th Five-Year Plans, as revealed by the FREX words in @fig-stm-plot-english. The leader associated with these plans were Deng Xiaoping and the corresponding premiers are Zhao Ziyang and Lipeng. This is reflected in @fig-topic1 which shows higher prevalence effects of them.
+
+```{r topic1}
+#| label: fig-topic1
+#| fig-cap: Topic 1, "Economic governance," in Chinese government reports and party communiques
+#| fig-width: 15
+#| fig-height: 8
+load("output/effect_estimates.Rdata")
+plot(effect_estimates, covariate = "Premier", 
+     xlab="Prevalence effect", ylab="Leader/Premier",
+     xlim=c(-1,1),
+     topics = c(1))
+```
+
+Similarly, Topic 4, "Rural Development," is associated with the 11th Five-Year Plan. The corresponding leader and premier were Hu Jintao and Wen Jiabao. This is reflected in @fig-topic4 which shows higher prevalence effects of them.
+
+```{r topic4}
+#| label: fig-topic4
+#| fig-cap: Topic 4, "Rural Development," in Chinese government reports and party communiques
+#| fig-width: 15
+#| fig-height: 8
+plot(effect_estimates, covariate = "Premier", 
+     xlab="Prevalence effect", ylab="Leader/Premier",
+     xlim=c(-1,1), 
+     topics = c(4))
+```
+
+However, the interaction between the party and government on economic planning decreased under Xi Jinping's leadership. Neither the party communiques nor the government reports emphasised the corresponding five-year plans. As a result, five-year plans under Xi failed to be recognised as a distinct topic by the model. The party communiques under Xi switched to party leadership and intra-party disciplines (Topic 6) and the government reports focused more on ex tempore economic problems such as the COVID-19 pandemic and pollution (e.g. Topic 14 and 20).
+
+As shown in @fig-topic6, the leadership of the party and intra-party discipline has only been emphasized by Xi Jinping. This is not echoed by his prime ministers, Li Keqiang or Li Qiang.
+
+```{r topic6}
+#| label: fig-topic6
+#| fig-cap: Topic 6, "Party leadership," in Chinese government reports and party communiques
+#| fig-width: 15
+#| fig-height: 8
+plot(effect_estimates, covariate = "Premier", 
+     xlab="Prevalence effect", ylab="Leader/Premier",
+     xlim=c(-1,1), 
+     topics = c(6))
+```
+
+On the other hand, Topic 14 (Economic stability/anti-poverty/pandemic) and Topic 20 (Pollution) are more related to the ex tempore economic problems that were only mentioned by Premier Li Qiang (@fig-topic-14) and Li Keqiang (@fig-topic-20), respectively. They are not echoed by party communiques under Xi Jinping, either.
+
+```{r topic14}
+#| label: fig-topic-14
+#| fig-cap: Topic 4, "Economic stability/anti-poverty/pandemic," in Chinese government reports and party communiques
+#| fig-width: 15
+#| fig-height: 8
+plot(effect_estimates, covariate = "Premier", 
+     xlab="Prevalence effect", ylab="Leader/Premier",
+     xlim=c(-1,1), 
+     topics = c(14))
+```
+
+```{r topic20}
+#| label: fig-topic-20
+#| fig-cap: Topic 20, "Pollution," in Chinese government reports and party communiques
+#| fig-width: 15
+#| fig-height: 8
+plot(effect_estimates, covariate = "Premier", 
+     xlab="Prevalence effect", ylab="Leader/Premier",
+     xlim=c(-1,1), 
+     topics = c(20))
+```
+
+In the topic related to the New Era and institutional reform (Topic 13), the prevalence has incrementally increased under the past party leaders since the Reform and Opening-Up, with the prevalence effect of Xi Jinping being the highest. This is shown in @fig-topic13. This implies that the recent political trends in the party were not necessarily intiated by Xi Jinping but were rather a continuation of the previous party leaders.
+
+```{r topic13}
+#| label: fig-topic13
+#| fig-cap: Topic 13, "New Era/institutional reform," in Chinese government reports and party communiques
+#| fig-width: 15
+#| fig-height: 8
+plot(effect_estimates, covariate = "Premier", 
+     xlab="Prevalence effect", ylab="Leader/Premier",
+     xlim=c(-1,1), 
+     topics = c(13))
+```
+
+In summary, the results of the topic prevalence effects show that the overlap between party communiques and government reports has decreased under Xi Jinping's leadership. The party communiques have shifted to party leadership and intra-party discipline, while the government reports have focused more on ex tempore economic problems. The recent political trends in the party were not necessarily initiated by Xi Jinping but were rather a continuation of the previous party leaders. These results will be further examined by other methods in the following sections.
+
+Moreover, there is no evidence that the party communiques or the government reports under Xi have realigned with the Mao era. There is almost no overlap between the topics of the Mao era and the Xi era.
+
+## Structural Topic Model - Topic distribution agreement
+
+One drawback of the prevalence effect analysis is that it only shows whether or not a topic is more prevalent under a specific leader/premier. It does not show the extent of similarity of topic distribution among different leaders/premiers.
+
+The Structural Topic Model conveniently provides the distribution of topics in each document as a parameter ($\theta$). We can use this information to calculate the similarity of topic distribution among leaders and their corresponding premiers. The similarity of topic distribution can be calculated using the Euclidean distance between the mean topic distribution of each leader and that of their corresponding premiers. The smaller the distance, the more similar the topic distribution.
+
+```{r stm-topic-dist}
+#| label: fig-stm-topic-dist
+#| fig-cap: Euclidean distance of mean topic distribution among leaders and their corresponding premiers
+#| fig-width: 10
+#| fig-height: 5
+distance_df <- data.frame(
+  Leader = c("Xi Jinping", "Hu Jintao", "Jiang Zemin", "Deng Xiaoping","Mao Zedong"),
+  Distance = rep(NA,5)
+)
+distance_df$Distance[1] <- distance(rbind(stmodel_25$theta[92:102,] |> colMeans(), stmodel_25$theta[46:56,] |> colMeans()))
+
+distance_df$Distance[2] <- distance(rbind(stmodel_25$theta[82:91,] |> colMeans(), stmodel_25$theta[36:45,] |> colMeans()))
+
+distance_df$Distance[3] <- distance(rbind(stmodel_25$theta[70:81,] |> colMeans(), stmodel_25$theta[20:35,] |> colMeans()))
+
+distance_df$Distance[4] <- distance(rbind(stmodel_25$theta[65:69,] |> colMeans(), stmodel_25$theta[13:19,] |> colMeans()))
+
+distance_df$Distance[5] <- distance(rbind(stmodel_25$theta[57:63,] |> colMeans(), stmodel_25$theta[1:9,] |> colMeans()))
+
+distance_df <- distance_df |>
+  mutate(Leader=factor(Leader, levels=rev(Leader)))
+
+ggplot(distance_df, aes(x=Leader, y=Distance)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=round(Distance,2)), vjust=-0.4) +
+  labs(x="Leader", y="Euclidean distance") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+@fig-stm-topic-dist shows the similarity of topic distribution among leaders and their corresponding premiers. The results show that the topic distribution of Xi Jinping and his premiers is the most dissimilar, followed by Hu Jintao and Wen Jiabao. The topic distribution of Mao Zedong and his premiers is the most similar. This confirms our previous results that the overlap between party communiques and government reports has decreased under Xi Jinping's leadership.
+
+## Correspondence analysis
+
+```{r ca}
+#| eval=FALSE
+wca <- textmodel_ca(dfm_all, nd=2) # two dimensions
+save(wca,dfm_all, file="output/wca.RData")
+```
+
+The first dimension of the Correspondence Analysis scores by year and party/government is plotted in @fig-ca. The Correspondence Analysis results confirm that the party communiques and government reports were largely overlapped under Mao, Deng and Jiang, but diverged under Xi.
+
+However, the Correspondence Analysis results disagree with the STM results in that the former imply that the divergence started in the late Jiang or Hu era, whereas the latter suggest that the divergence has only been visible under Xi.
+
+More interestingly, the first dimension of the Correspondence Analysis seems to capture the shift in the left-right political spectrum. A lower score on the first dimension indicates a more left-leaning political stance, while a higher score indicates a more right-leaning stance. Specifically, Reform and Opening-Up since 1978 marked a shift to the right in both party communiques and government reports. While the government communiques continued to shift to the right by emphasising economic development and entrepreneurship, the party communiques *ceased to* shift to the right by focusing on party leadership and intra-party discipline under Xi. This divergence in trends is unprecedented in the history of the PRC and is a promising area for further research.
+
+However, the second component is not shown here as I have not found a meaningful interpretation for it. Nevertheless, the results for the second component are provided in [Appendix @sec-second-ca].
+
+```{r ca-plot}
+#| label: fig-ca
+#| fig-cap: Correspondence analysis of Chinese government reports and party communiques (first dimension)
+#| fig-width: 10
+#| fig-height: 5
+load("output/wca.RData")
+  #1D
+plot <-  data.frame(Year=docvars(dfm_all)$Year,
+           y=wca$rowcoord[,1],
+           color=docvars(dfm_all)$type) 
+leader <- data.frame(Year=c(1949:1976,1978:2024)) |>
+  mutate(leader=case_when(
+    Year %in% 1949:1976 ~ "Mao",
+    Year %in% 1978:1992 ~ "Deng",
+    Year %in% 1992:2002 ~ "Jiang",
+    Year %in% 2002:2012 ~ "Hu",
+    Year %in% 2013:2024 ~ "Xi",
+    .default = NA
+  )) |>
+  mutate(leader=factor(leader, levels=c("Mao","Deng","Jiang","Hu","Xi")))
+
+ggplot(plot, aes(x=Year,y=y)) +
+  geom_point(aes(color=color)) + theme_bw() +
+  geom_smooth(method="loess",aes(color=color)) +
+  geom_tile(data=leader, aes(x = Year, y = -2, fill = leader),
+            height=0.1, na.rm=T) +
+  labs(x="Year", y="Left-Right", fill="Leader") +
+  scale_color_discrete(name = "Report by", 
+                       labels = c("Government", "Party"))
+
+
+```
+
+# Conclusions
+
+In conclusion, there is no evidence of a realignment with the Mao era in the party communiques or government reports under Xi Jinping. On the contrary, the style of the party communiques and government reports is more of a continuation of the Hu era. Therefore, the hypothesis that Xi Jinping is moving toward a more Maoist style and putting an end to the Reform and Opening-Up era is not supported by our data of party communiques and government reports. It is true that the topics in party communiques and government reports under Xi differ from those under his predecessors, but the topics in these reports differed among his predecessors after all. In terms of the left-right political spectrum, the party communiques merely *ceased* to shift to the right, rather than shifted to the left, under Xi Jinping. More interestingly, the government reports continued to shift to the right.
+
+The divergence in the topic distribution of party communiques and government reports under Xi Jinping is unprecedented in the history of the PRC, and very counter-intuitive. This is a promising area for further research. The party communiques ceased to shift to the right by focusing on party leadership and intra-party discipline under Xi, while the government reports continued to shift to the right by emphasising economic development and entrepreneurship. This is counter-intuitive to the wide-spread belief that the party is increasingly intervening in the economy while the State Council is losing its autonomy. Nevertheless, the divergence should not be over-interpreted, as the institutional and personnel changes are much more substantial than public reports when assessing the party-government power dynamics in China.
+
+One source of divergence is the downplaying of the five-year plans, which had been a key area of overlap between party communiques and government reports under Mao, Deng and Jiang. This fall in economic planning is echoed by the fact that the government reports under Xi have been increasingly focused on ex tempore economic problems such as environmental pollution and COVID-19, which are more practical rather than strategic issues. This is in line with the speculation that the State Council is subdued and marginalised by the party under Xi.
+
+# References {.unnumbered}
+
+::: {#refs}
+:::
+
+\appendix
+
+<!-- # Appendix: All code in this Assignment {#sec-code .appendix} -->
+
+<!-- ```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE} -->
+
+<!-- ``` -->
+
+<!-- \newpage -->
+
+# Results of the Second Component of the Correspondence Analysis {#sec-second-ca .appendix}
+
+```{r}
+#| label: fig-ca-2
+#| fig-cap: Correspondence analysis of Chinese government reports and party communiques (second dimension)
+#| fig-width: 10
+#| fig-height: 4.5
+plot <-  data.frame(Year=docvars(dfm_all)$Year,
+           y=wca$rowcoord[,2],
+           color=docvars(dfm_all)$type) 
+leader <- data.frame(Year=c(1949:1976,1978:2024)) |>
+  mutate(leader=case_when(
+    Year %in% 1949:1976 ~ "Mao",
+    Year %in% 1978:1992 ~ "Deng",
+    Year %in% 1992:2002 ~ "Jiang",
+    Year %in% 2002:2012 ~ "Hu",
+    Year %in% 2013:2024 ~ "Xi",
+    .default = NA
+  )) |>
+  mutate(leader=factor(leader, levels=c("Mao","Deng","Jiang","Hu","Xi")))
+
+ggplot(plot, aes(x=Year,y=y)) +
+  geom_point(aes(color=color)) + theme_bw() +
+  geom_smooth(method="loess",aes(color=color)) +
+  geom_tile(data=leader, aes(x = Year, y = -7, fill = leader),
+            height=0.1, na.rm=T) +
+  labs(x="Year", y="Second Dimension", fill="Leader") +
+  scale_color_discrete(name = "Report by", 
+                       labels = c("Government", "Party"))
+```
